@@ -1,0 +1,96 @@
+title: Docker学习之：镜像概述
+author: __apple
+date: 2018-05-26 09:02:33
+tags:
+- Testing
+---
+我们在开始这篇文章之前呢，先给大家介绍关于Image的几个相关概念
+什么是Image呢？
++ 文件和meta data的集合（root filesystem）
++ 分层的，并且每一层都可以添加、改变、删除文件，成为一个新的image
++ 不同的image可以共享相同的layer
++ Image 本身是read-only的
+
+其实Linux是分为内核空间与用户空间的，Linux kernel(bootfs)属于内核空间，用户空间就是我们做的各种Linux发行版，比如我们常用的Centos、Ubuntu，那么这些也被成为Base Image,他们可以共享主机里面的Linux kerne空间，我们也可以在Base Image基础之上安装更多的Image,比如mysql nginx，关于这个层次关系，这里就不过多的解释了，有兴趣的可以去搜索一把！
+我们首先进入我们已经配置好的 centos，然后执行下面这条命令，就会出现当前你安装的docker下面有哪些Image,是不是很方便呢？
+```
+sudo docker image ls
+```
+那么如果你之前没有安装任何Image ,你输入这个命令，是没有任何镜像的，那么
+我们应该怎么获取Image呢？这里说两种方法
++ 通过写dockefile文件的方式
++ 通过Pull from Registry 的方式
+
+我们这里先给大家用pull的方式拉取镜像，关于dockefile的方式，我们后面会有专门的一章讲这个文件应该怎么写，大家不要着急。。。。。
+
+#### 执行下面的命令我们就可以拉一个ubuntu:14.04的镜像了，是不是很简单呢。。。。
+
+```
+sudo docker pull ubuntu:14.04
+```
+再次使用
+```
+sudo docker image ls
+```
+**输出结果**
+```
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntu              14.04               8cef1fa16c77        7 days ago          223MB
+```
+不知道大家有没有注意到，我们拉下来的镜像是非常小的，相比我们直接下载安装的版本，那些都有几个G，那么原因是什么呢？这个就是我们之前说的，我们是在Linux kernel基础之上添加的ubuntu Image，所以它省去了很多不需要的东西。
+docker pull 默认是从hub.docker.com上拉取的镜像，大家可以自己去这个网站看一把，这个是[官方的](https://hub.docker.com/)，当然如果你也可以直接取第三方的平台获取，镜像。
+#### 我们改如何自己创建一个Image呢？
+在讲这个话题之前呢？我们先解决一个小问题，不知道大家有没有发现我们每次，执行docker命令的时候，都需要加一个sudo,这个有点恶心，我们解决它，执行以下的命令
+```
+sudo groupadd docker
+sudo gpasswd -a vagrant docker
+sudo server docker restart
+最后退出你的centos，执行vagrant ssh重启就可以了
+```
+我们在创建自己的image之前呢？先用Go语言写一段简单的程序，并把它编译成可执行的二进制文件。
+首先你可以在个人目录下（～）创建一个名为hello-world的文件件
+```
+mkdir hello-world
+cd hello-world/
+vim hello.go
+```
+这里为了防止有的同学没有接触过Go,我就把最简单的Go程序贴出来了
+```
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Printf("hello docker\n")
+}
+```
+接下来，如果你的Go环境还没有安装，你可以去网上找一把教程，这个不难。
+```
+go build hello.go 
+```
+这个时候我们就编译好了，接下里我们书写一个dockerfile文件，
+```
+FROM scratch
+ADD hello /
+CMD ["/hello"]
+```
+因为这里我们是新建的BaseImage,就不需要在其他的BaseImage之上了，直接写scratch就可以了,它的意思就是不已任何镜像为基础,新建完成以后，执行
+```
+docker build -t apple/hello-world .
+```
+这里的-t是打标签，就是apple下面的hello-world
+```
+[vagrant@localhost hello-world]$ docker image ls
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+apple/hello-world   latest              69a935434293        17 minutes ago      2.02MB
+ubuntu              14.04               8cef1fa16c77        8 days ago          223MB
+```
+这样我们的镜像就做好了，最后我们来变成容器，执行一把！
+```
+docker run apple/hello-world
+```
+输出了hello docker
+此时我们的镜像学习，到此就结束了，怎么样你学会了嘛？
+最后感觉有些小伙伴对于目录结构有点搞不清楚，贴出一张我的目录结构图
+![file.png](https://upload-images.jianshu.io/upload_images/11192943-5b80382fceb7d768.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+祝大家学习愉快！！！！！！
